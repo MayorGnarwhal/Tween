@@ -114,7 +114,7 @@ Halts the playback of the tween and resets its progress.
 ## `PlaybackState()`
 Returns the current [playback state](https://create.roblox.com/docs/reference/engine/enums/PlaybackState) of the tween.
 ```lua
-local tween = Tween:Create(workspace.Baseplate, TweenInfo.new(5), {Transparency = 1})
+local tween = Tween:Create(instance, TweenInfo.new(5), {Transparency = 1})
 print(tween:PlaybackState()) --> Enum.PlaybackState.Begin
 
 tween:Play()
@@ -168,7 +168,7 @@ Asynchronously calls a function when the tween has completed playing or is stopp
 | **callback** | *function* | Function to be called upon tween completeion or cancelation. Recieves one argument, the current playback state |
 | :-- | :-- | :-- |
 ```lua
-local tween = Tween:Create(workspace.Baseplate, TweenInfo.new(5), {Transparency = 1})
+local tween = Tween:Create(instance, TweenInfo.new(5), {Transparency = 1})
 
 tween:Play():andThen(function(playbackState)
     print(1, playbackState)
