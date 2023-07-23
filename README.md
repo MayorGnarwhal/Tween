@@ -75,10 +75,20 @@ Creates a Tween object that tween's the target value by a given amount. All prop
 | **instance** | *Instance* | The instances whose properties are to be tweened |
 | **tweenInfo** | *TweenInfo* | The [TweenInfo](https://create.roblox.com/docs/reference/engine/datatypes/TweenInfo) to be used |
 | **propertyTable** | *table* | A dictionary of properties, and their target values, to be tweened |
+```lua
+workspace.CurrentCamera.FieldOfView = 70
+
+Tween:CreateDiff(workspace.CurrentCamera, TweenInfo.new(1), {FieldOfView = 5}):Play()
+Tween:CreateDiff(workspace.CurrentCamera, TweenInfo.new(1), {FieldOfView = 10}):Play()
+
+task.wait(1)
+
+print(workspace.CurrentCamera.FieldOfView) --> 85
+```
 
 
 ## `Connect()`
-Creates a dummy tween that is not associated with any instance. Used to perform any custom tween behavior, such as tweening multiple instances with a single Tween.
+Creates a dummy tween that is not associated with any instance. Used to perform any custom tween behavior, such as tweening multiple instances with a single Tween or rotating an instance by more than 180 degrees.
 |     |     |     |
 | :-- | :-- | :-- |
 | **first** | *any* | The initial value of the dummy tween |
@@ -86,6 +96,18 @@ Creates a dummy tween that is not associated with any instance. Used to perform 
 | **tweenInfo** | *TweenInfo* | The [TweenInfo](https://create.roblox.com/docs/reference/engine/datatypes/TweenInfo) to be used |
 | **onChange** | *function* | Function called when dummy tween's value changes. Recieves two arguments, the current value and the previous value |
 
+Rotating a part by a full rotation
+```lua
+local tween = Tween:Connect(
+    0, math.rad(360),
+    TweenInfo.new(5, Enum.EasingStyle.Sine),
+    function(value, lastValue)
+        workspace.Baseplate.CFrame *= CFrame.Angles(0, value - lastValue, 0)
+    end
+)
+
+tween:Play()
+```
 
 
 # Methods
