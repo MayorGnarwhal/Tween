@@ -67,7 +67,7 @@ Creates a standard Tween object. If non-properties are being tweened, then a dum
 | **propertyTable** | *table* | A dictionary of properties, and their target values, to be tweened |
 
 
-## `CreateDiff()`
+## `CreateByDelta()`
 Creates a Tween object that tween's the target value by a given amount. All properties being tweened also use a dummy tween, allowing for tweening by a difference in value. This allows tweening the same property of the same instance at the same time.
 ### Parameters
 |     |     |     |
@@ -78,8 +78,8 @@ Creates a Tween object that tween's the target value by a given amount. All prop
 ```lua
 workspace.CurrentCamera.FieldOfView = 70
 
-Tween:CreateDiff(workspace.CurrentCamera, TweenInfo.new(1), {FieldOfView = 5}):Play()
-Tween:CreateDiff(workspace.CurrentCamera, TweenInfo.new(1), {FieldOfView = 10}):Play()
+Tween:CreateByDelta(workspace.CurrentCamera, TweenInfo.new(1), {FieldOfView = 5}):Play()
+Tween:CreateByDelta(workspace.CurrentCamera, TweenInfo.new(1), {FieldOfView = 10}):Play()
 
 task.wait(1)
 
@@ -116,7 +116,6 @@ Starts playback of the tween. Has no effect if the tween is currently playing.
 ```lua
 local tween = Tween:Create(instance, TweenInfo.new(5), {Transparency = 1})
 tween:Play()
-
 ```
 This method also returns the tween object, allowing you to create and play a tween on the same line while still having reference to the tween.
 ```lua
@@ -124,6 +123,13 @@ local tween = Tween:Create(instance, TweenInfo.new(5), {Transparency = 1}):Play(
 tween.Completed:Wait()
 ```
 
+By default, the Tween will automatically call [Destroy()](#destroy) upon completion, meaning it can only be played once. To prevent this behavior, use the optional `doNotCleanup` argument
+```
+local tween = Tween:Create(instance, TweenInfo.new(5), {Transparency = 1})
+tween:Play(true) -- does not destroy after completion
+tween.Completed:Wait()
+tween:Play() -- destroys after completion
+```
 
 ## `Pause()`
 Halts the playback of the tween. Pausing does not reset the progress of the tween, meaning if you call `Play()` after pausing, the tween will resume where it left off.
@@ -173,13 +179,14 @@ local start = os.clock()
 local tween = Tween:Create(instance, TweenInfo.new(5), {Transparency = 1}):Play()
 tween:Yield(0.5)
 
-print(playbackState)      --> Enum.PlaybackState.Playing
+print(tween:PlaybackState())      --> Enum.PlaybackState.Playing
 print(os.clock() - start) --> 2.5
 ```
 
 Tween also persists the `Completed` event, allowing you to yield the same way you would a Roblox Tween object.
 ```lua
-local tween = Tween:Create(instance, TweenInfo.new(5), {Transparency = 1}):Play()
+local tween = Tween:Create(instance, TweenInfo.new(5), {Transparency = 1})
+tween:Play()
 tween.Completed:Wait()
 ```
 
