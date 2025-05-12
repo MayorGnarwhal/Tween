@@ -15,7 +15,7 @@ export type ClassType = typeof(setmetatable({} :: {
 	PropertyTable: PropertyTable,
 	Type: "Standard" | "Delta" | "Connect",
 	
-	_autoCleanup: boolean?,
+	_autoDestroy: boolean?,
 	
 	_tweens: {Tween},
 	_valueBases: {ValueBase},
@@ -87,7 +87,7 @@ function Tween:Create(instance: Instance, tweenInfo: TweenInfo, propertyTable: P
 	self._completedBindable = Instance.new("BindableEvent")
 	self.Completed = self._completedBindable.Event
 	
-	self._autoCleanup = true
+	self._autoDestroy = true
 	
 	self._tweens = {}
 	self._valueBases = {}
@@ -138,7 +138,7 @@ end
 
 
 --// Methods
--- play the tween. object will automatically destroy on completion unless :Persist() is called before :Play()
+-- play the tween. object will automatically destroy on completion unless :Persist() is called before completion
 function Tween.Play(self: ClassType): ClassType
 	if self.PlaybackState == Enum.PlaybackState.Playing or self.PlaybackState == Enum.PlaybackState.Delayed then
 		return
@@ -169,11 +169,13 @@ function Tween.Play(self: ClassType): ClassType
 		self.PlaybackState = Enum.PlaybackState.Playing	
 	end
 	
-	if self._autoCleanup then -- destroy on completion to
-		table.insert(self._connections, self.Completed:Once(function()
+	table.insert(self._connections, self.Completed:Once(function()
+		if self._autoDestroy then
 			self:Destroy()
-		end))
-	end
+		else
+			self:_cleanup()
+		end
+	end))
 	
 	return self
 end
@@ -201,12 +203,12 @@ function Tween.Cancel(self: ClassType): ClassType
 	return self
 end
 
--- yields until the tween is completed or canceled
+-- yields until the tween is completed or cancelled
 function Tween.Wait(self: ClassType): Enum.PlaybackState
 	return self.Completed:Wait()
 end
 
--- asynchronously calls a closure when the tween is completed or canceled
+-- asynchronously calls a closure when the tween is completed or cancelled
 function Tween.andThen(self: ClassType, closure: (playbackState: Enum.PlaybackState) -> nil): ClassType
 	self.Completed:Once(closure)
 	
@@ -214,10 +216,10 @@ function Tween.andThen(self: ClassType, closure: (playbackState: Enum.PlaybackSt
 end
 
 -- sets the tween to not automatically destroy itself when completed
--- should be called before :Play()
+-- must be called before playback is completed
 -- if persisted, then :Destroy() must be called manually when tween is no longer needed
 function Tween.Persist(self: ClassType): ClassType
-	self._autoCleanup = false
+	self._autoDestroy = false
 	
 	return self
 end
@@ -228,8 +230,8 @@ function Tween._createDummyTween(self: ClassType, property: string, target: any)
 	local currentValue = GetValue(self.Instance, property)
 	local setFunction = GetSetFunction(self.Instance, property)
 
-	local isCFrame = (typeof(currentValue) == "CFrame")
-	local dummyValue = GetValueBase(currentValue)
+	local isCFrame = (typeof(currentValue) == "CFrame" and typeof(target) == "CFrame")
+	local dummyValue = GetValueBase(target)
 	if self.Type ~= "Delta" then
 		dummyValue.Value = currentValue
 	end
@@ -254,6 +256,7 @@ function Tween._createDummyTween(self: ClassType, property: string, target: any)
 end
 
 -- creates all Tween instances that are required for manipulating given properties
+-- called every time :Play() is called from a non-paused state
 function Tween._generateTweens(self: ClassType)
 	local safePropertyTable: PropertyTable = {}
 	
@@ -274,13 +277,14 @@ function Tween._generateTweens(self: ClassType)
 	local firstTween = self._tweens[1]
 	if firstTween then
 		table.insert(self._connections, firstTween.Completed:Connect(function(playbackState)
-			self:_cleanup()
 			self.PlaybackState = playbackState
 			self._completedBindable:Fire(playbackState)
 		end))
 	end
 end
 
+-- cleans up the instances and connections that were created for previous tween playback
+-- called after playback completes, so the tween will need to rebuild next time :Play() is called
 function Tween._cleanup(self: ClassType)
 	for i, tween in ipairs(self._tweens) do
 		tween:Cancel()
