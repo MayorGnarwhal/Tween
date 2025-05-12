@@ -1,10 +1,19 @@
 # Tween
-Tween is a wrapper module for Roblox's [TweenService](https://create.roblox.com/docs/reference/engine/classes/TweenService) class that expands the functionality and ease of use. Tween supports the manipulation of properties that are not natively supported by TweenService, including Attributes and the CFrame and Scales of models, as well as provide multiple new constructors for more specialized uses.
+Tween is a wrapper module for Roblox's [TweenService](https://create.roblox.com/docs/reference/engine/classes/TweenService) class that expands the functionality and ease of use. Tween supports the manipulation of properties that are not natively supported by TweenService, including Attributes and the CFrame and Scales of models, as well as provide multiple new constructors for more specialized use cases.
+
+## Table of Contents
+- [How it works](#how-it-works)
+- [Constructors](#constructors)
+- [Methods](#methods)
+- [Properties](#properties)
+- [Events](#events)
+- [Limitations](#limitations)
+- [Installation](#installation)
 
 ## How it works
 Tween allows the manipulation of additionally properties by taking advantage of ValueBases to create "dummy tweens" on an instance that can be tweened natively by TweenService, and replicating those changes to the real instance. This means that a Tween object can consist of multiple TweenService [TweenBases](https://create.roblox.com/docs/reference/engine/classes/TweenBase) and have additional created instances.
 
-For example, the traditional way of tweening a model is to create a CFrameValue that will be tweened, and update the model's CFrame on the Changed connetion. Below is an example of how this may be done using TweenService:
+For example, the traditional way of tweening a model is to create a CFrameValue that will be tweened, and update the model's CFrame on the Changed connetion. Below is an example of how this may be done using native TweenService:
 ```luau
 local TweenService = game:GetService("TweenService")
 
@@ -52,6 +61,7 @@ tween:Wait()
 | **tweenInfo** | *[TweenInfo](https://create.roblox.com/docs/reference/engine/datatypes/TweenInfo)* | The TweenInfo to be used |
 | **propertyTable** | *{[string]: any}* | A dictonary of properties and their target values to be tweened |
 
+<br>
 
 ### `CreateByDelta`
 Creates a Tween object using offsets instead of target values and increments the properties instead of overwrites. This allows multiple scripts to change the instances properties at once, unlike how TweenService traditionally overwrites the property throughout the tween.
@@ -63,7 +73,7 @@ Creates a Tween object using offsets instead of target values and increments the
 | **propertyTable** | *{[string]: any}* | A dictonary of properties and the offset value to be tweened by |
 
 ### Code Samples
-Since `CreateByDelta` uses offsets, `tween1` and `tween2` are functionally similar.
+Since `CreateByDelta` uses offsets, `tween1` and `tween2` are functionally similar, tweening the numberValue to have a value of 200.
 ```luau
 local numberValue = Instance.new("NumberValue")
 numberValue.Value = 100
@@ -76,11 +86,14 @@ local tween2 = Tween:CreateByDelta(numberValue, tweenInfo, {Value = 100})
 
 The tweened properties can be manipualted in the middle of the tween's playback, allowing for stacking effects.
 ```luau
+local numberValue = Instance.new("NumberValue")
+numberValue.Value = 0
+
 local tween = Tween:CreateByDelta(numberValue, TweenInfo.new(1), {Value = 100})
 
 tween:Play()
 
-task.wait(0.5)
+task.wait(tween.TweenInfo.Time / 2)
 numberValue.Value += 1_000
 
 tween.Completed:Wait()
@@ -93,9 +106,10 @@ local model = workspace.Model
 Tween:CreateByDelta(model, TweenInfo.new(1), {CFrame = Vector3.new(0, 20, 0)}):Play()
 ```
 
+<br>
 
 ### `Connect`
-Creates a tween between a start and end value that calls and update callback function, allowing for custom tween behavior. 
+Creates a tween between a start and end value that calls an update callback function, allowing for custom tween behavior. 
 ### Parameters
 |     |     |     |
 | :-- | :-- | :-- |
@@ -112,6 +126,7 @@ Tween:Connect(0, math.rad(720), TweenInfo.new(10), function(value, lastValue)
 end):Play()
 ```
 
+<br>
 
 ### `CreateFromCurrent`
 Creates a tween from a list of property names, generating the PropertyTable based on the instance's current values. Useful for creating a tween to return to the current state after the instance is manipulated by other means.
@@ -141,13 +156,13 @@ local openTween = Tween:Create(doorModel, tweenInfo, {
 Starts playback of the tween. Has no effect if the tween is currently playing.
 
 ### `Pause`
-Halts playback of the tween. Doesn't reset the tween's progress, so calling [Play()](#play) again will resume playback from the moment it was paused.
+Halts playback of the tween. Does not reset the tween's progress, so calling [Play()](#play) again will resume playback from the moment it was paused.
 
 ### `Cancel`
 Halts playback of the tween and resets its progress, but does not reset the properties of the instance. Successive calls of [Play()](#play) will take the entire TweenInfo's duration.
 
 ### `Wait`
-Yields the current thread until the tween is either completed or canceled. Returns the current PlaybackState.
+Yields the current thread until the tween is either completed or canceled. Returns the current PlaybackState. Is equivalent to waiting for the [Completed event](#events) with `tween.Completed:Wait()`.
 
 ### `andThen`
 Asynchronously calls a function when the tween is either completed or canceled.
@@ -157,25 +172,33 @@ Asynchronously calls a function when the tween is either completed or canceled.
 | :-- | :-- | :-- |
 | **closure** | *(playbackState: [Enum.PlaybackState](https://create.roblox.com/docs/reference/engine/enums/PlaybackState)) -> nil* | The instance whos properties are to be tweened |
 
+### Code Samples
+```luau
+tween:andThen(function(playbackState)
+	if playbackState == Enum.PlaybackState.Completed then
+		print("completed!")
+	elseif playbackState == Enum.PlaybackState.Cancelled then
+		print("canceled")
+	end
+end)
+```
+
 ### `Persist`
-Prevents the tween from automatically calling [Destroy()](#destroy) when it has completed, allowing for reusing the tween instance. Must be called before [Play()](#play) is called. Note that [Destroy()](#destroy) must then be manually called when the tween is no longer required.
+Prevents the tween from automatically calling [Destroy()](#destroy) when it has completed, allowing for reusing the tween instance. Must be called before playback is completed or cancelled. Note that [Destroy()](#destroy) must then be manually called when the tween is no longer required.
 
 ### `Destroy`
+Destroys the Tween object, cleaning up all of the instances that were created to handle the tween's behavior. Is called automatically upon completion, unless [Persist()](#persist)] is called before playback is completed or cancelled.
 
 <br>
 
 ## Properties
-### `Instance`
+### `Instance`: [Instance](https://create.roblox.com/docs/reference/engine/datatypes/Instance)
 
+### `TweenInfo`: [TweenInfo](https://create.roblox.com/docs/reference/engine/datatypes/TweenInfo)
 
-### `TweenInfo`
+### `PropertyTable`: `{[string]: any}`
 
-
-### `PropertyTable`
-
-
-### `PlaybackState`
-The current [PlaybackState](https://create.roblox.com/docs/reference/engine/enums/PlaybackState) of the tween
+### `PlaybackState`: [Enum.PlaybackState](https://create.roblox.com/docs/reference/engine/enums/PlaybackState)
 
 <br>
 
@@ -183,12 +206,22 @@ The current [PlaybackState](https://create.roblox.com/docs/reference/engine/enum
 ### `Completed(playbackState: Enum.PlaybackState)`
 Fires when the tween is either completed or canceled. Passes the current PlaybackState of the tween.
 
+```luau
+tween.Completed:Connect(function(playbackState)
+	if playbackState == Enum.PlaybackState.Completed then
+		print("completed!")
+	elseif playbackState == Enum.PlaybackState.Cancelled then
+		print("canceled")
+	end
+end)
+```
 
 <br>
 
 ## Limitations
-- Since Tween is a wrapper built on top of TweenService, it will never be more performant than TweenService. It is recommended to use TweenService when your use case allows it, however Tween can greatly simplify code for the extra functionality that it is built for
+- Since Tween is a wrapper built on top of TweenService, it is inherently less performant than TweenService. It is recommended to use TweenService when your use case allows it, however Tween can greatly simplify code for the extra functionality that it is built for
 
 <br>
 
 ## Installation
+Get Tween [on Roblox](https://create.roblox.com/store/asset/105202054717410/Tween) or from the [latest GitHub release](https://github.com/MayorGnarwhal/Tween/releases)
